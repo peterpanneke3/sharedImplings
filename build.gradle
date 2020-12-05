@@ -10,9 +10,10 @@ repositories {
 	mavenCentral()
 }
 
-def runeLiteVersion = '1.6.26.1'
+def runeLiteVersion = '1.6.33'
 
 dependencies {
+	compile 'org.java-websocket:Java-WebSocket:1.5.1'
 	compileOnly group: 'net.runelite', name:'client', version: runeLiteVersion
 
 	compileOnly 'org.projectlombok:lombok:1.18.4'
@@ -25,8 +26,8 @@ dependencies {
 	}
 }
 
-group = 'com.example'
-version = '1.0-SNAPSHOT'
+group = 'be.peterpanneke'
+version = '0.1-RFC'
 sourceCompatibility = '1.8'
 
 tasks.withType(JavaCompile) {
