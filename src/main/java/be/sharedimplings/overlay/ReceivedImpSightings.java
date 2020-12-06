@@ -1,6 +1,7 @@
 package be.sharedimplings.overlay;
 
 import be.sharedimplings.ImpSighting;
+import be.sharedimplings.ImplingType;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.overlay.worldmap.WorldMapPointManager;
 
@@ -8,6 +9,7 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -19,7 +21,7 @@ public class ReceivedImpSightings {
     @Inject
     private WorldMapPointManager worldMapPointManager;
 
-    private final List<ImpSighting> impSightings = new ArrayList<>();
+    private List<ImpSighting> impSightings = new ArrayList<>();
     private final List<ImplingWorldMapPoint> implingWorldPoints = new ArrayList<>();
 
 
@@ -31,7 +33,7 @@ public class ReceivedImpSightings {
             return cachedImplingState;
         }
         List<ImpSighting> recentSightings = impSightings.stream()
-                .filter(sighting -> currentTick - sighting.getReceivedAtTick() < 30) //TODO allow to configure?
+                .filter(sighting -> currentTick - sighting.getReceivedAtTick() < 50) //TODO allow to configure?
                 .collect(Collectors.toList());
 
         GroupedImplingState state = GroupedImplingState.createFor(recentSightings, currentTick);
@@ -42,11 +44,16 @@ public class ReceivedImpSightings {
 
     public void addSighting(ImpSighting sighting) {
         impSightings.add(sighting);
+        impSightings = impSightings.stream()
+                .sorted(Comparator.comparingInt(ImpSighting::getReceivedAtTick).reversed())
+                .limit(500)
+                .collect(Collectors.toList());
+
     }
 
     public void updateWorldpoints() {
         //TODO move - change concept
-        worldMapPointManager.removeIf(wp -> implingWorldPoints.remove(wp));
+        worldMapPointManager.removeIf(implingWorldPoints::remove);
 
         cachedImplingState.getImplingLocationHistories()
                 .forEach(
@@ -57,6 +64,16 @@ public class ReceivedImpSightings {
                             worldMapPointManager.add(worldMapPoint);
                             implingWorldPoints.add(worldMapPoint);
                         }
+                );
+    }
+
+    public boolean isNewSighting(int world, ImplingType implingType, int npcIndex) {
+        return impSightings.stream()
+                .noneMatch(
+                        sighting ->
+                                sighting.getImplingType() == implingType
+                                        && sighting.getNpcIndex() == npcIndex
+                                        && sighting.getWorld() == world
                 );
     }
 }

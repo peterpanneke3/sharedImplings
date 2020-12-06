@@ -1,5 +1,6 @@
 package be.sharedimplings;
 
+import be.sharedimplings.overlay.DescriptionProvider;
 import be.sharedimplings.overlay.ImplingWorldOverlay;
 import be.sharedimplings.overlay.ReceivedImpSightings;
 import be.sharedimplings.servercommunication.*;
@@ -12,6 +13,7 @@ import net.runelite.api.NPC;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.NpcSpawned;
+import net.runelite.client.Notifier;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
@@ -58,6 +60,9 @@ public class SharedImplingsPlugin extends Plugin {
     @Inject
     private ConnectionStateHolder stateHolder;
 
+    @Inject
+    private Notifier notifier;
+
     private ImplingServerClient socketClient;
 
     private Gson gson = new GsonBuilder().create();;
@@ -93,6 +98,8 @@ public class SharedImplingsPlugin extends Plugin {
                     interestedInSighting = interestedInSighting && (!config.receiveOnlyCurrentWorldImplings() || client.getWorld() == impLocationMessage.getWorld());
                     if (interestedInSighting) {
 
+                        notifyIfNeeded(impLocationMessage);
+
                         ImpSighting impSighting = new ImpSighting(impLocationMessage.getWorld(), impLocationMessage.getImplingType(), impLocationMessage.getNpcIndex(), impLocationMessage.getWorldLocation(), client.getTickCount());
 
                         receivedImpSightings.addSighting(impSighting);
@@ -101,6 +108,23 @@ public class SharedImplingsPlugin extends Plugin {
                     }
                 }
         );
+    }
+
+    private void notifyIfNeeded(ImplingSpawnedData impLocationMessage) {
+        if(config.notification() == NotificationConfig.NONE){
+            return;
+        }
+
+        if(client.getWorld() != impLocationMessage.getWorld() && config.notification() == NotificationConfig.ONLY_CURRENT_WORLD){
+            return;
+        }
+
+
+        if(receivedImpSightings.isNewSighting(impLocationMessage.getWorld(), impLocationMessage.getImplingType(), impLocationMessage.getNpcIndex())){
+            notifier.notify(impLocationMessage.getImplingType() + " impling reported in "
+                    + DescriptionProvider.getDescriptionFor(impLocationMessage.getWorldLocation().getRegionID())
+            + (client.getWorld() == impLocationMessage.getWorld() ? " current world.": "in world" + impLocationMessage.getWorld()) + " check the worldmap.");
+        }
     }
 
     private Optional<ImplingSpawnedData> safeParseImpLocationMessage(String message) {

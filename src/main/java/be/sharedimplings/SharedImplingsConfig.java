@@ -103,4 +103,16 @@ public interface SharedImplingsConfig extends Config
 	{
 		return true;
 	}
+
+	@ConfigItem(
+			position = 8,
+			keyName = "notifynewimp",
+			name = "Receive notifications",
+			description = "Toggles wether to be notified on new imp sightings",
+			section = implingSection
+	)
+	default NotificationConfig notification()
+	{
+		return NotificationConfig.ALL;
+	}
 }
