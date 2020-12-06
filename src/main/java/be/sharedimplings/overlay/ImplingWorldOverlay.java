@@ -1,10 +1,13 @@
 package be.sharedimplings.overlay;
 
 import be.sharedimplings.ImplingType;
+import be.sharedimplings.SharedImplingsConfig;
 import be.sharedimplings.servercommunication.ConnectionState;
 import be.sharedimplings.servercommunication.ConnectionStateHolder;
 import net.runelite.api.Client;
-import net.runelite.client.ui.overlay.*;
+import net.runelite.client.ui.overlay.OverlayPanel;
+import net.runelite.client.ui.overlay.OverlayPosition;
+import net.runelite.client.ui.overlay.OverlayPriority;
 import net.runelite.client.ui.overlay.components.TitleComponent;
 
 import javax.inject.Inject;
@@ -27,6 +30,9 @@ public class ImplingWorldOverlay extends OverlayPanel {
     @Inject
     private ConnectionStateHolder connectionStateHolder;
 
+    @Inject
+    private SharedImplingsConfig config;
+
     public ImplingWorldOverlay() {
         setPosition(OverlayPosition.TOP_CENTER);
         setPriority(OverlayPriority.MED);
@@ -35,28 +41,26 @@ public class ImplingWorldOverlay extends OverlayPanel {
 
     @Override
     public Dimension render(Graphics2D graphics) {
-        if(connectionStateHolder.getState() != ConnectionState.CONNECTED) {
+        if (config.showOverlayConnected() || connectionStateHolder.getState() != ConnectionState.CONNECTED) {
             panelComponent.getChildren().add(TitleComponent.builder()
                     .text(connectionStateHolder.getState().name())
                     .color(colorOf(connectionStateHolder.getState()))
                     .build());
         }
 
+        if (!config.showOverlay()) {
+            return super.render(graphics);
+        }
+
         GroupedImplingState stateToRender = implings.getStateRelevantAt(client.getTickCount());
-
-
         List<ImplingLocationHistory> dragonImpsToRender = getImps(DRAGON, stateToRender);
-        if(!dragonImpsToRender.isEmpty()){
+        if (!dragonImpsToRender.isEmpty()) {
             renderImps(DRAGON, dragonImpsToRender);
         }
-
-
         List<ImplingLocationHistory> luckyImpsToRender = getImps(LUCKY, stateToRender);
-        if(!luckyImpsToRender.isEmpty()){
+        if (!luckyImpsToRender.isEmpty()) {
             renderImps(LUCKY, luckyImpsToRender);
         }
-
-
         return super.render(graphics);
     }
 
@@ -86,7 +90,7 @@ public class ImplingWorldOverlay extends OverlayPanel {
     }
 
     private Color colorOf(ConnectionState state) {
-        switch (state){
+        switch (state) {
             case CONNECTED:
                 return Color.GREEN;
             case CONNECTING:

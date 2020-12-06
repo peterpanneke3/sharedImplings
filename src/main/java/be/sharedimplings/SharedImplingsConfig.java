@@ -14,7 +14,7 @@ public interface SharedImplingsConfig extends Config
 		description = "Configuration for each type of impling",
 		position = 99
 	)
-	String implingSection = "implings";
+	String implingSection = "sharedimplings";
 
 	@ConfigItem(
 		position = 1,
@@ -77,5 +77,30 @@ public interface SharedImplingsConfig extends Config
 	default boolean receiveOnlyCurrentWorldImplings()
 	{
 		return false;
+	}
+
+
+	@ConfigItem(
+			position = 6,
+			keyName = "showsimpoverlay",
+			name = "Show the overlay",
+			description = "Toggles wether the overlay is show",
+			section = implingSection
+	)
+	default boolean showOverlay()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+			position = 7,
+			keyName = "showsimpoverlayconnected",
+			name = "Show when CONNECTED",
+			description = "Toggles wether to show CONNECTED",
+			section = implingSection
+	)
+	default boolean showOverlayConnected()
+	{
+		return true;
 	}
 }
