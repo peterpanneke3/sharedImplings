@@ -78,7 +78,7 @@ public class SharedImplingsPlugin extends Plugin {
     protected void startUp() {
         overlayManager.add(implingWorldOverlay);
         try {
-            socketClient = new ImplingServerClient(new URI("wss://u2059gjsw9.execute-api.eu-west-2.amazonaws.com/dev"), this::onClientMessage, stateHolder);
+            socketClient = new ImplingServerClient(new URI("wss://u2059gjsw9.execute-api.eu-west-2.amazonaws.com/prod"), this::onClientMessage, stateHolder);
         } catch (URISyntaxException e) {
             throw new RuntimeException();
         }
