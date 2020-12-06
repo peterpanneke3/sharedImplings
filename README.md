@@ -14,6 +14,13 @@ Notifies you of dragon and lucky impling who have been scouted by other players.
   <img src = "https://github.com/peterpanneke3/sharedImplings/blob/master/images/worldmap.png">
   </p>
 
+
+  Configurable
+  
+<p align="center"> 
+  <img src = "https://github.com/peterpanneke3/sharedImplings/blob/master/images/configuration.png">
+  </p>
+
 ##How it works
 When a dragon or lucky impling is visible on your client, your client reports the impling to a server. (The plugin allows you to not report implings if you want to catch them yourself)
 The server then tells other clients about this impling.
