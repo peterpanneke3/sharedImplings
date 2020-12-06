@@ -1,20 +1,23 @@
 # Shared Implings
-Allows you to automaticaly share dragon and lucky implings.
+Allows you to automaticaly share the location of dragon and lucky implings.
 Notifies you of dragon and lucky impling who have been scouted by other players.
+
+
+<p align="center"> 
+  <img src = "https://github.com/peterpanneke3/sharedImplings/blob/master/images/overlay.png">
+  </p>
+  
+  The exact reported locations are shown on the worldmap.
+  
+  
+<p align="center"> 
+  <img src = "https://github.com/peterpanneke3/sharedImplings/blob/master/images/worldmap.png">
+  </p>
 
 ##How it works
 When a dragon or lucky impling is visible on your client, your client reports the impling to a server. (The plugin allows you to not report implings if you want to catch them yourself)
 The server then tells other clients about this impling.
 When you receive an impling location from the server, you will see the region and the location will be marked on the worldmap.
-
-
-| Name 														| Enabled by Default| What|
-| :--- 														| :-----: | :----|
-| Report Dragon implings | Yes | Send locations of d imps?|
-|  Report Lucky implings | Yes | Send locations of lucky imps?|
-|  Receive dragon implings | Yes | Show d imps other players reported? |
-|  Report Lucky implings | Yes | Show lucky imps other players reported? |
-|  Only receive in current world | No | Only show imps in your current world? |
 
 
 #Contributing
