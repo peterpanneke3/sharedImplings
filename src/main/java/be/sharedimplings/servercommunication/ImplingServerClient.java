@@ -14,18 +14,23 @@ public class ImplingServerClient extends WebSocketClient {
 
 	private Consumer<String> messageConsumer;
 
-	public ImplingServerClient(URI serverURI, Consumer<String> messageConsumer) {
+	private ConnectionStateHolder stateHolder;
+
+	public ImplingServerClient(URI serverURI, Consumer<String> messageConsumer, ConnectionStateHolder stateHolder) {
 		super(serverURI);
 		this.messageConsumer = messageConsumer;
+		this.stateHolder = stateHolder;
 	}
 
 	@Override
 	public void onOpen(ServerHandshake handshakedata) {
+		stateHolder.setState(ConnectionState.CONNECTED);
 		logger.debug("new connection opened");
 	}
 
 	@Override
 	public void onClose(int code, String reason, boolean remote) {
+		stateHolder.setState(ConnectionState.DISCONNECTED);
 		logger.debug("connection closed");
 	}
 

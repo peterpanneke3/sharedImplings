@@ -2,9 +2,7 @@ package be.sharedimplings;
 
 import be.sharedimplings.overlay.ImplingWorldOverlay;
 import be.sharedimplings.overlay.ReceivedImpSightings;
-import be.sharedimplings.servercommunication.ImplingServerClient;
-import be.sharedimplings.servercommunication.ImplingSpawned;
-import be.sharedimplings.servercommunication.ImplingSpawnedData;
+import be.sharedimplings.servercommunication.*;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.inject.Provides;
@@ -24,7 +22,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import javax.inject.Named;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.temporal.ChronoUnit;
@@ -58,6 +55,9 @@ public class SharedImplingsPlugin extends Plugin {
     @Inject
     private SharedImplingsConfig config;
 
+    @Inject
+    private ConnectionStateHolder stateHolder;
+
     private ImplingServerClient socketClient;
 
     private Gson gson = new GsonBuilder().create();;
@@ -73,10 +73,11 @@ public class SharedImplingsPlugin extends Plugin {
     protected void startUp() {
         overlayManager.add(implingWorldOverlay);
         try {
-            socketClient = new ImplingServerClient(new URI("wss://u2059gjsw9.execute-api.eu-west-2.amazonaws.com/dev"), this::onClientMessage);
+            socketClient = new ImplingServerClient(new URI("wss://u2059gjsw9.execute-api.eu-west-2.amazonaws.com/dev"), this::onClientMessage, stateHolder);
         } catch (URISyntaxException e) {
             throw new RuntimeException();
         }
+        stateHolder.setState(ConnectionState.CONNECTING);
         socketClient.connect();
     }
 
