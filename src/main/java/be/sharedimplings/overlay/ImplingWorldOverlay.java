@@ -1,15 +1,19 @@
 package be.sharedimplings.overlay;
 
+import be.sharedimplings.ImplingType;
 import be.sharedimplings.servercommunication.ConnectionState;
 import be.sharedimplings.servercommunication.ConnectionStateHolder;
 import net.runelite.api.Client;
-import net.runelite.client.ui.overlay.OverlayLayer;
-import net.runelite.client.ui.overlay.OverlayPanel;
-import net.runelite.client.ui.overlay.OverlayPosition;
+import net.runelite.client.ui.overlay.*;
 import net.runelite.client.ui.overlay.components.TitleComponent;
 
 import javax.inject.Inject;
 import java.awt.*;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import static be.sharedimplings.ImplingType.DRAGON;
+import static be.sharedimplings.ImplingType.LUCKY;
 
 public class ImplingWorldOverlay extends OverlayPanel {
 
@@ -24,34 +28,61 @@ public class ImplingWorldOverlay extends OverlayPanel {
     private ConnectionStateHolder connectionStateHolder;
 
     public ImplingWorldOverlay() {
-        setPosition(OverlayPosition.DYNAMIC);
-        setLayer(OverlayLayer.ABOVE_SCENE);
-        setPreferredSize(new Dimension(300, 20));
-        setDragTargetable(true);
+        setPosition(OverlayPosition.TOP_CENTER);
+        setPriority(OverlayPriority.MED);
     }
 
 
     @Override
     public Dimension render(Graphics2D graphics) {
-        panelComponent.getChildren().add(TitleComponent.builder()
-                .text(connectionStateHolder.getState().name())
-                .color(colorOf(connectionStateHolder.getState()))
-                .build());
-//figure out a decent way to visualize the data
+        if(connectionStateHolder.getState() != ConnectionState.CONNECTED) {
+            panelComponent.getChildren().add(TitleComponent.builder()
+                    .text(connectionStateHolder.getState().name())
+                    .color(colorOf(connectionStateHolder.getState()))
+                    .build());
+        }
+
         GroupedImplingState stateToRender = implings.getStateRelevantAt(client.getTickCount());
 
-        stateToRender.getImplingLocationHistories()
+
+        List<ImplingLocationHistory> dragonImpsToRender = getImps(DRAGON, stateToRender);
+        if(!dragonImpsToRender.isEmpty()){
+            renderImps(DRAGON, dragonImpsToRender);
+        }
+
+
+        List<ImplingLocationHistory> luckyImpsToRender = getImps(LUCKY, stateToRender);
+        if(!luckyImpsToRender.isEmpty()){
+            renderImps(LUCKY, luckyImpsToRender);
+        }
+
+
+        return super.render(graphics);
+    }
+
+    private void renderImps(ImplingType implingType, List<ImplingLocationHistory> impsOfType) {
+        panelComponent.getChildren().add(TitleComponent.builder()
+                .text(implingType.name())
+                .color(Color.ORANGE)
+                .build());
+
+        impsOfType
                 .forEach(impLocationHistory -> {
                     boolean inCurrentWorld = impLocationHistory.getWorld() == client.getWorld();
                     String worldText = inCurrentWorld ? "" : " (W" + impLocationHistory.getWorld() + ")";
                     panelComponent.getChildren().add(TitleComponent.builder()
-                            .text(impLocationHistory.getImplingType() + "," + impLocationHistory.locationDescription() + worldText)
+                            .text(impLocationHistory.locationDescription() + worldText)
                             .color(inCurrentWorld ? Color.GREEN : Color.RED)
                             .build());
-
-
                 });
-        return super.render(graphics);
+
+    }
+
+    private List<ImplingLocationHistory> getImps(ImplingType implingType, GroupedImplingState stateToRender) {
+        return stateToRender.getImplingLocationHistories()
+                .stream().filter(lh -> lh.getImplingType() == implingType)
+                .collect(Collectors.toList());
+
     }
 
     private Color colorOf(ConnectionState state) {
