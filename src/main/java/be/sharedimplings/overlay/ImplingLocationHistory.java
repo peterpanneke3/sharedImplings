@@ -38,8 +38,11 @@ public class ImplingLocationHistory {
 
     public String locationDescription() {
         LocationAge mostRecentLocation = getMostRecentLocation();
-        String regionName = DescriptionProvider.getDescriptionFor(mostRecentLocation.getWorldPoint().getRegionID());
-        return regionName + " " + mostRecentLocation.getTickAge();
+        return DescriptionProvider.getDescriptionFor(mostRecentLocation.getWorldPoint().getRegionID());
+    }
+
+    public int ageInSeconds(){
+        return (int) (getMostRecentLocation().getTickAge() * 0.6);
     }
 
     public LocationAge getMostRecentLocation() {
@@ -47,4 +50,6 @@ public class ImplingLocationHistory {
                 .min(Comparator.comparing(LocationAge::getTickAge))
                 .orElseThrow(RuntimeException::new);
     }
+
+
 }
