@@ -45,7 +45,7 @@ public interface SharedImplingsConfig extends Config
 	@ConfigItem(
 			position = 3,
 			keyName = "receivedragon",
-			name = "Receive dragon implings",
+			name = "Receive Dragon implings",
 			description = "Configures whether or not you want to receive dragon implings from others",
 			section = implingSection
 	)
@@ -57,7 +57,7 @@ public interface SharedImplingsConfig extends Config
 	@ConfigItem(
 			position = 4,
 			keyName = "receivelucky",
-			name = "Report Lucky implings",
+			name = "Receive Lucky implings",
 			description = "Configures whether or not you want to receive lucky implings from others",
 			section = implingSection
 	)
