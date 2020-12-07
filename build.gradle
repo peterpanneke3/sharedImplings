@@ -13,7 +13,6 @@ repositories {
 def runeLiteVersion = '1.6.33'
 
 dependencies {
-	compile 'org.java-websocket:Java-WebSocket:1.5.1'
 	compileOnly group: 'net.runelite', name:'client', version: runeLiteVersion
 
 	compileOnly 'org.projectlombok:lombok:1.18.4'

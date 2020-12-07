@@ -3,7 +3,10 @@ package be.sharedimplings;
 import be.sharedimplings.overlay.DescriptionProvider;
 import be.sharedimplings.overlay.ImplingWorldOverlay;
 import be.sharedimplings.overlay.ReceivedImpSightings;
-import be.sharedimplings.servercommunication.*;
+import be.sharedimplings.servercommunication.ConnectionStateHolder;
+import be.sharedimplings.servercommunication.ImplingServerClient;
+import be.sharedimplings.servercommunication.ImplingSightingData;
+import be.sharedimplings.servercommunication.ReportImplingSighting;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.inject.Provides;
@@ -15,17 +18,17 @@ import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.NpcSpawned;
 import net.runelite.client.Notifier;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.task.Schedule;
 import net.runelite.client.ui.overlay.OverlayManager;
+import okhttp3.OkHttpClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.time.temporal.ChronoUnit;
 import java.util.HashSet;
 import java.util.List;
@@ -63,9 +66,16 @@ public class SharedImplingsPlugin extends Plugin {
     @Inject
     private Notifier notifier;
 
+    @Inject
+    private OkHttpClient okClient;
+
+    @Inject
+    private EventBus eventBus;
+
     private ImplingServerClient socketClient;
 
-    private Gson gson = new GsonBuilder().create();;
+    private Gson gson = new GsonBuilder().create();
+    ;
 
     @Provides
     SharedImplingsConfig getConfig(ConfigManager configManager) {
@@ -77,59 +87,53 @@ public class SharedImplingsPlugin extends Plugin {
     @Override
     protected void startUp() {
         overlayManager.add(implingWorldOverlay);
-        try {
-            socketClient = new ImplingServerClient(new URI("wss://u2059gjsw9.execute-api.eu-west-2.amazonaws.com/prod"), this::onClientMessage, stateHolder);
-        } catch (URISyntaxException e) {
-            throw new RuntimeException();
-        }
-        stateHolder.setState(ConnectionState.CONNECTING);
+        socketClient = new ImplingServerClient(okClient, "wss://u2059gjsw9.execute-api.eu-west-2.amazonaws.com/dev", eventBus, stateHolder);
         socketClient.connect();
     }
 
-    public void onClientMessage(String message) {
+    @Subscribe
+    public void onReportImplingSighting(ReportImplingSighting message) {
         if (!config.receiveDragon() && !config.receiveLucky()) {
             return;
         }
-        safeParseImpLocationMessage(message).ifPresent(
-        //should this post a message on the eventbus to ensure it all runs on the correct thread?
-                impLocationMessage -> {
-                    boolean interestedInSighting = (impLocationMessage.getImplingType() == ImplingType.DRAGON && config.receiveDragon()) ||
-                            (impLocationMessage.getImplingType() == ImplingType.LUCKY && config.receiveLucky());
-                    interestedInSighting = interestedInSighting && (!config.receiveOnlyCurrentWorldImplings() || client.getWorld() == impLocationMessage.getWorld());
-                    if (interestedInSighting) {
 
-                        notifyIfNeeded(impLocationMessage);
+        ImplingSightingData impLocationMessage = message.getData();
 
-                        ImpSighting impSighting = new ImpSighting(impLocationMessage.getWorld(), impLocationMessage.getImplingType(), impLocationMessage.getNpcIndex(), impLocationMessage.getWorldLocation(), client.getTickCount());
+        boolean interestedInSighting = (impLocationMessage.getImplingType() == ImplingType.DRAGON && config.receiveDragon()) ||
+                (impLocationMessage.getImplingType() == ImplingType.LUCKY && config.receiveLucky());
+        interestedInSighting = interestedInSighting && (!config.receiveOnlyCurrentWorldImplings() || client.getWorld() == impLocationMessage.getWorld());
+        if (interestedInSighting) {
 
-                        receivedImpSightings.addSighting(impSighting);
-                    } else {
-                        logger.debug("not interested in received message for " + impLocationMessage.getImplingType());
-                    }
-                }
-        );
+            notifyIfNeeded(impLocationMessage);
+
+            ImpSighting impSighting = new ImpSighting(impLocationMessage.getWorld(), impLocationMessage.getImplingType(), impLocationMessage.getNpcIndex(), impLocationMessage.getWorldLocation(), client.getTickCount());
+
+            receivedImpSightings.addSighting(impSighting);
+        } else {
+            logger.debug("not interested in received message for " + impLocationMessage.getImplingType());
+        }
     }
 
-    private void notifyIfNeeded(ImplingSpawnedData impLocationMessage) {
-        if(config.notification() == NotificationConfig.NONE){
+    private void notifyIfNeeded(ImplingSightingData impLocationMessage) {
+        if (config.notification() == NotificationConfig.NONE) {
             return;
         }
 
-        if(client.getWorld() != impLocationMessage.getWorld() && config.notification() == NotificationConfig.ONLY_CURRENT_WORLD){
+        if (client.getWorld() != impLocationMessage.getWorld() && config.notification() == NotificationConfig.ONLY_CURRENT_WORLD) {
             return;
         }
 
 
-        if(receivedImpSightings.isNewSighting(impLocationMessage.getWorld(), impLocationMessage.getImplingType(), impLocationMessage.getNpcIndex())){
+        if (receivedImpSightings.isNewSighting(impLocationMessage.getWorld(), impLocationMessage.getImplingType(), impLocationMessage.getNpcIndex())) {
             notifier.notify(impLocationMessage.getImplingType() + " impling reported in "
                     + DescriptionProvider.getDescriptionFor(impLocationMessage.getWorldLocation().getRegionID())
-            + (client.getWorld() == impLocationMessage.getWorld() ? " current world.": "in world" + impLocationMessage.getWorld()) + " check the worldmap.");
+                    + (client.getWorld() == impLocationMessage.getWorld() ? " current world." : "in world" + impLocationMessage.getWorld()) + " check the worldmap.");
         }
     }
 
-    private Optional<ImplingSpawnedData> safeParseImpLocationMessage(String message) {
+    private Optional<ImplingSightingData> safeParseImpLocationMessage(String message) {
         try {
-            return Optional.of(gson.fromJson(message, ImplingSpawnedData.class));
+            return Optional.of(gson.fromJson(message, ImplingSightingData.class));
         } catch (Exception e) {
             logger.error("Received invalid message on socket", e);
             return Optional.empty();
@@ -195,27 +199,27 @@ public class SharedImplingsPlugin extends Plugin {
     }
 
     private void reportLocationOf(Impling impling) {
-        ImplingSpawned impSpawn = new ImplingSpawned(ImplingSpawnedData.builder()
+        ReportImplingSighting impSpawn = new ReportImplingSighting(ImplingSightingData.builder()
                 .npcIndex(impling.getNpc().getIndex())
                 .implingType(impling.getImplingType())
                 .worldLocation(impling.getNpc().getWorldLocation())
                 .world(client.getWorld())
                 .build());
-        socketClient.send(gson.toJson(impSpawn));
+        socketClient.send(impSpawn);
     }
 
     public static boolean devMode = false;
 
-    @Schedule(period = 5, unit = ChronoUnit.SECONDS)
-    public void fakeReceiveImplingLocation(){
-        if(devMode && client.getGameState() == GameState.LOGGED_IN) {
-            ImplingSpawnedData fakeMessage = ImplingSpawnedData.builder()
+    @Schedule(period = 10, unit = ChronoUnit.SECONDS)
+    public void fakeReceiveImplingLocation() {
+        if (devMode && client.getGameState() == GameState.LOGGED_IN) {
+            ReportImplingSighting fakeSighting = new ReportImplingSighting(ImplingSightingData.builder()
                     .npcIndex(10)
                     .implingType(ImplingType.DRAGON)
                     .worldLocation(client.getLocalPlayer().getWorldLocation())
                     .world(client.getWorld())
-                    .build();
-            onClientMessage(gson.toJson(fakeMessage));
+                    .build());
+            onReportImplingSighting(fakeSighting);
         }
     }
 }

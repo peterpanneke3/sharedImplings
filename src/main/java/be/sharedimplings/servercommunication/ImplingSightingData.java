@@ -9,7 +9,7 @@ import net.runelite.api.coords.WorldPoint;
 @Builder
 @Value
 @AllArgsConstructor
-public class ImplingSpawnedData {
+public class ImplingSightingData {
     int world;
     ImplingType implingType;
     int npcIndex;
