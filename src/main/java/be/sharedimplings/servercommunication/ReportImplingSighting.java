@@ -11,4 +11,8 @@ public class ReportImplingSighting extends WebsocketMessage {
     public ReportImplingSighting(ImplingSightingData data) {
         this.data = data;
     }
+
+    public boolean isValid() {
+        return data != null && data.isValid();
+    }
 }

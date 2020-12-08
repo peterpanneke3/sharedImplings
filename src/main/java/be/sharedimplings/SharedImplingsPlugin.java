@@ -7,9 +7,11 @@ import be.sharedimplings.servercommunication.*;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.inject.Provides;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.NPC;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.NpcSpawned;
@@ -37,10 +39,11 @@ import java.util.stream.Collectors;
         name = "Shared Implings",
         description = "Crowdsource implings. Automaticaly report implings. Automaticaly receive impling locations from other users",
         tags = {"hunter", "minimap", "crowdsource", "lucky imp", "dragon imp", "implings"}
-)
+
+        )
+@Slf4j
 public class SharedImplingsPlugin extends Plugin {
 
-    private static final Logger logger = LoggerFactory.getLogger(SharedImplingsPlugin.class);
 
     @Inject
     private OverlayManager overlayManager;
@@ -89,7 +92,22 @@ public class SharedImplingsPlugin extends Plugin {
     }
 
     @Subscribe
+    public void onReportImplingDespawn(ReportImplingDespawn message) {
+        if(!message.isValid()){
+            log.debug("received invalid message" + message.toString());
+            return;
+        }
+        ImplingDespawnData despawnData = message.getData();
+        ImpDespawn impDespawn = new ImpDespawn(despawnData.getWorld(), despawnData.getImplingType(), despawnData.getNpcIndex(), despawnData.getWorldLocation(), client.getTickCount());
+        receivedImpSightings.despawned(impDespawn);
+    }
+
+    @Subscribe
     public void onReportImplingSighting(ReportImplingSighting message) {
+        if(!message.isValid()){
+            log.debug("received invalid message" + message.toString());
+            return;
+        }
         if (!config.receiveDragon() && !config.receiveLucky()) {
             return;
         }
@@ -107,7 +125,7 @@ public class SharedImplingsPlugin extends Plugin {
 
             receivedImpSightings.addSighting(impSighting);
         } else {
-            logger.debug("not interested in received message for " + impLocationMessage.getImplingType());
+            log.debug("not interested in received message for " + impLocationMessage.getImplingType());
         }
     }
 
@@ -125,15 +143,6 @@ public class SharedImplingsPlugin extends Plugin {
             notifier.notify(impLocationMessage.getImplingType() + " impling reported in "
                     + DescriptionProvider.getDescriptionFor(impLocationMessage.getWorldLocation().getRegionID())
                     + (client.getWorld() == impLocationMessage.getWorld() ? " current world." : "in world" + impLocationMessage.getWorld()) + " check the worldmap.");
-        }
-    }
-
-    private Optional<ImplingSightingData> safeParseImpLocationMessage(String message) {
-        try {
-            return Optional.of(gson.fromJson(message, ImplingSightingData.class));
-        } catch (Exception e) {
-            logger.error("Received invalid message on socket", e);
-            return Optional.empty();
         }
     }
 
@@ -176,9 +185,33 @@ public class SharedImplingsPlugin extends Plugin {
 
     @Subscribe
     public void onNpcDespawned(NpcDespawned npcDespawned) {
+        NPC npc = npcDespawned.getNpc();
+        Optional<ImplingType> implingTypeOpt = ImplingType.forNpcId(npc.getId());
+        implingTypeOpt.ifPresent(
+                implingType -> {
+                    //if the imp moves out of sight, it should not be reported as gone,
+                    //because it might still be there
+                    //happens when player teleports, or the player/imp walk away
+                    if(despawnHappenedNearPlayer(npcDespawned)){
+                        reportDespawnOf(new Impling( implingType, npcDespawned.getNpc()));
+                    }
+                }
+
+        );
+
         reportNewLocationsOf = reportNewLocationsOf.stream()
                 .filter(tracked -> tracked.getNpc().getIndex() != npcDespawned.getNpc().getIndex())
                 .collect(Collectors.toSet());
+    }
+
+    private boolean despawnHappenedNearPlayer(NpcDespawned npcDespawned) {
+        try {
+            WorldPoint despawnLocation = npcDespawned.getNpc().getWorldLocation();
+            WorldPoint playerLocation = client.getLocalPlayer().getWorldLocation();
+            return despawnLocation.distanceTo(playerLocation) < 15;
+        }catch (Exception e){
+            return false;
+        }
     }
 
     @Subscribe
@@ -207,6 +240,17 @@ public class SharedImplingsPlugin extends Plugin {
         socketClient.send(impSpawn);
     }
 
+
+    private void reportDespawnOf(Impling impling) {
+        ReportImplingDespawn impDespawn = new ReportImplingDespawn(ImplingDespawnData.builder()
+                .npcIndex(impling.getNpc().getIndex())
+                .implingType(impling.getImplingType())
+                .worldLocation(impling.getNpc().getWorldLocation())
+                .world(client.getWorld())
+                .build());
+        socketClient.send(impDespawn);
+    }
+
     public static boolean devMode = false;
 
     @Schedule(period = 10, unit = ChronoUnit.SECONDS)
@@ -228,6 +272,19 @@ public class SharedImplingsPlugin extends Plugin {
                     .world(client.getWorld())
                     .build());
             onReportImplingSighting(fakeSighting);
+        }
+    }
+
+    @Schedule(period = 17, unit = ChronoUnit.SECONDS)
+    public void fakeReceiveImplingDespawn() {
+        if (devMode && client.getGameState() == GameState.LOGGED_IN) {
+            ReportImplingDespawn fakeDespawn = new ReportImplingDespawn(ImplingDespawnData.builder()
+                    .npcIndex(10)
+                    .implingType(ImplingType.DRAGON)
+                    .worldLocation(client.getLocalPlayer().getWorldLocation())
+                    .world(client.getWorld())
+                    .build());
+            onReportImplingDespawn(fakeDespawn);
         }
     }
 }

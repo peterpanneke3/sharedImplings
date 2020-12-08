@@ -1,5 +1,6 @@
 package be.sharedimplings.overlay;
 
+import be.sharedimplings.ImpDespawn;
 import be.sharedimplings.ImpSighting;
 import be.sharedimplings.ImplingType;
 import net.runelite.client.game.ItemManager;
@@ -22,11 +23,12 @@ public class ReceivedImpSightings {
     private WorldMapPointManager worldMapPointManager;
 
     private List<ImpSighting> impSightings = new ArrayList<>();
+    private List<ImpDespawn> impDespawns = new ArrayList<>();
     private final List<ImplingWorldMapPoint> implingWorldPoints = new ArrayList<>();
 
 
     private int cacheIsForTick = -1;
-    private GroupedImplingState cachedImplingState = GroupedImplingState.createFor(Collections.emptyList(), 0);
+    private GroupedImplingState cachedImplingState = GroupedImplingState.createFor(Collections.emptyList(), Collections.emptyList(), 0);
 
     public GroupedImplingState getStateRelevantAt(int currentTick) {
         if (cacheIsForTick == currentTick) {
@@ -35,8 +37,11 @@ public class ReceivedImpSightings {
         List<ImpSighting> recentSightings = impSightings.stream()
                 .filter(sighting -> currentTick - sighting.getReceivedAtTick() < 50) //TODO allow to configure?
                 .collect(Collectors.toList());
+        List<ImpDespawn> recentDespawns = impDespawns.stream()
+                .filter(despawn -> currentTick - despawn.getReceivedAtTick() < 70) //needs to be more than the sighting age limit, in case it came in a tick late
+                .collect(Collectors.toList());
 
-        GroupedImplingState state = GroupedImplingState.createFor(recentSightings, currentTick);
+        GroupedImplingState state = GroupedImplingState.createFor(recentSightings, recentDespawns, currentTick);
         cachedImplingState = state;
         cacheIsForTick = currentTick;
         return state;
@@ -44,12 +49,9 @@ public class ReceivedImpSightings {
 
     public void addSighting(ImpSighting sighting) {
         impSightings.add(sighting);
-        impSightings = impSightings.stream()
-                .sorted(Comparator.comparingInt(ImpSighting::getReceivedAtTick).reversed())
-                .limit(500)
-                .collect(Collectors.toList());
-
+        onlyKeepRecentSightings();
     }
+
 
     public void updateWorldpoints() {
         //TODO move - change concept
@@ -77,8 +79,30 @@ public class ReceivedImpSightings {
                 );
     }
 
+    public void despawned(ImpDespawn despawn) {
+        impDespawns.add(despawn);
+        //refactor to use a rolling max capacity datastructure?
+        onlyKeepRecentDespawns();
+    }
+
     public void clear() {
         worldMapPointManager.removeIf(ImplingWorldMapPoint.class::isInstance);
         implingWorldPoints.clear();
+    }
+
+
+    private void onlyKeepRecentDespawns() {
+        impDespawns = impDespawns.stream()
+                .sorted(Comparator.comparingInt(ImpDespawn::getReceivedAtTick).reversed())
+                .limit(500)
+                .collect(Collectors.toList());
+    }
+
+
+    private void onlyKeepRecentSightings() {
+        impSightings = impSightings.stream()
+                .sorted(Comparator.comparingInt(ImpSighting::getReceivedAtTick).reversed())
+                .limit(500)
+                .collect(Collectors.toList());
     }
 }

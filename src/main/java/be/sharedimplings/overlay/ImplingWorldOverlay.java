@@ -74,9 +74,10 @@ public class ImplingWorldOverlay extends OverlayPanel {
                 .forEach(impLocationHistory -> {
                     boolean inCurrentWorld = impLocationHistory.getWorld() == client.getWorld();
                     String worldText = inCurrentWorld ? "" : " (W" + impLocationHistory.getWorld() + ")";
+                    String caughtText = impLocationHistory.isReportedAsDespawned() ?  "(CAUGHT)" : "";
                     panelComponent.getChildren().add(TitleComponent.builder()
-                            .text(impLocationHistory.locationDescription() + worldText + " " + impLocationHistory.ageInSeconds() + "s ago")
-                            .color(inCurrentWorld ? Color.GREEN : Color.RED)
+                            .text(impLocationHistory.locationDescription() + worldText + " " + impLocationHistory.ageInSeconds() + "s ago " + caughtText)
+                            .color(inCurrentWorld ? (impLocationHistory.isReportedAsDespawned() ? Color.ORANGE : Color.GREEN) : Color.RED)
                             .build());
                 });
 

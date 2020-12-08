@@ -1,10 +1,12 @@
 package be.sharedimplings.overlay;
 
+import be.sharedimplings.ImpDespawn;
 import be.sharedimplings.ImpSighting;
 import be.sharedimplings.ImplingType;
 import lombok.Builder;
 import lombok.Value;
 
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -16,13 +18,16 @@ public class ImplingLocationHistory {
     ImplingType implingType;
     int world;
     List<LocationAge> previousLocations;
+    boolean reportedAsDespawned;
 
 
-    public static ImplingLocationHistory createFor(List<ImpSighting> impSightings, int currentTick) {
+    public static ImplingLocationHistory createFor(List<ImpSighting> impSightings, List<ImpDespawn> impDespawns, int currentTick) {
+        impDespawns = impDespawns == null ? Collections.emptyList() : impDespawns;
         return ImplingLocationHistory.builder()
                 .implingType(impSightings.get(0).getImplingType())
                 .world(impSightings.get(0).getWorld())
                 .previousLocations(mapToLocationAges(impSightings, currentTick))
+                .reportedAsDespawned(!impDespawns.isEmpty())
                 .build();
     }
 

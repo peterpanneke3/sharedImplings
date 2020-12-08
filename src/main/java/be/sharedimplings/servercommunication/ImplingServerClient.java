@@ -39,6 +39,7 @@ public class ImplingServerClient extends WebSocketListener {
 		this.sessionId = UUID.randomUUID();
 		Collection<Class<? extends WebsocketMessage>> messages = new HashSet<>();
 		messages.add(ReportImplingSighting.class);
+		messages.add(ReportImplingDespawn.class);
 		gson = WebsocketGsonFactory.build(WebsocketGsonFactory.factory(messages));
 	}
 
