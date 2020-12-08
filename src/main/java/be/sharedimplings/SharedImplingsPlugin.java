@@ -142,7 +142,9 @@ public class SharedImplingsPlugin extends Plugin {
 
     @Override
     protected void shutDown() {
+        overlayManager.remove(implingWorldOverlay);
         socketClient.close();
+        receivedImpSightings.clear();
     }
 
 

@@ -76,4 +76,9 @@ public class ReceivedImpSightings {
                                         && sighting.getWorld() == world
                 );
     }
+
+    public void clear() {
+        worldMapPointManager.removeIf(ImplingWorldMapPoint.class::isInstance);
+        implingWorldPoints.clear();
+    }
 }
