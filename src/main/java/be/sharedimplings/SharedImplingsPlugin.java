@@ -3,10 +3,7 @@ package be.sharedimplings;
 import be.sharedimplings.overlay.DescriptionProvider;
 import be.sharedimplings.overlay.ImplingWorldOverlay;
 import be.sharedimplings.overlay.ReceivedImpSightings;
-import be.sharedimplings.servercommunication.ConnectionStateHolder;
-import be.sharedimplings.servercommunication.ImplingServerClient;
-import be.sharedimplings.servercommunication.ImplingSightingData;
-import be.sharedimplings.servercommunication.ReportImplingSighting;
+import be.sharedimplings.servercommunication.*;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.inject.Provides;
@@ -211,6 +208,15 @@ public class SharedImplingsPlugin extends Plugin {
     }
 
     public static boolean devMode = false;
+
+    @Schedule(period = 10, unit = ChronoUnit.SECONDS)
+    public void autoReconnect(){
+        if(stateHolder.getState() == ConnectionState.DISCONNECTED){
+            socketClient.connect();
+        }
+    }
+
+
 
     @Schedule(period = 10, unit = ChronoUnit.SECONDS)
     public void fakeReceiveImplingLocation() {

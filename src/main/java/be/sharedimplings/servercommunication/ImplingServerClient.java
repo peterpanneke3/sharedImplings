@@ -44,11 +44,11 @@ public class ImplingServerClient extends WebSocketListener {
 
 	public void connect()
 	{
+		stateHolder.setState(ConnectionState.CONNECTING);
 		Request request = new Request.Builder()
 				.url(serverURI)
 				.build();
 
-		stateHolder.setState(ConnectionState.CONNECTING);
 
 		webSocket = client.newWebSocket(request, this);
 
