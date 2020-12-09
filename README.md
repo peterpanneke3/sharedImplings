@@ -1,6 +1,8 @@
 # Shared Implings
-Allows you to automaticaly share the location of dragon and lucky implings.
-Notifies you of dragon and lucky impling who have been scouted by other players.
+Allows you to automaticaly share the location of implings you come across.
+Notifies you of implings whom have been scouted by other players.
+
+This plugin works for Lucky, Dragon, Ninja and Magpie implings.
 
 
 <p align="center"> 
@@ -22,7 +24,7 @@ Notifies you of dragon and lucky impling who have been scouted by other players.
   </p>
 
 ##How it works
-When a dragon or lucky impling is visible on your client, your client reports the impling to a server. (The plugin allows you to not report implings if you want to catch them yourself)
+When an impling is visible on your client, and your configuration allows it, your client reports the impling location to a server.
 The server then tells other clients about this impling.
 When you receive an impling location from the server, you will see the region and the location will be marked on the worldmap.
 
@@ -32,5 +34,5 @@ Share your ideas/issues/feedback with me via [github](https://github.com/peterpa
 
 You can also help by making a pullrequest.
 
-When developing, run the plugin via SharedImplingPluginTest to receive fake dragon impling notifications at your current location.
+When developing, run the plugin via SharedImplingPluginTest to receive fake impling calls at your current location.
 
