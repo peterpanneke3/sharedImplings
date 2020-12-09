@@ -15,8 +15,7 @@ import java.awt.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static be.sharedimplings.ImplingType.DRAGON;
-import static be.sharedimplings.ImplingType.LUCKY;
+import static be.sharedimplings.ImplingType.*;
 
 public class ImplingWorldOverlay extends OverlayPanel {
 
@@ -41,15 +40,14 @@ public class ImplingWorldOverlay extends OverlayPanel {
 
     @Override
     public Dimension render(Graphics2D graphics) {
+        if (!config.showOverlay()) {
+            return super.render(graphics);
+        }
         if (config.showOverlayConnected() || connectionStateHolder.getState() != ConnectionState.CONNECTED) {
             panelComponent.getChildren().add(TitleComponent.builder()
                     .text(connectionStateHolder.getState().name())
                     .color(colorOf(connectionStateHolder.getState()))
                     .build());
-        }
-
-        if (!config.showOverlay()) {
-            return super.render(graphics);
         }
 
         GroupedImplingState stateToRender = implings.getStateRelevantAt(client.getTickCount());
@@ -60,6 +58,14 @@ public class ImplingWorldOverlay extends OverlayPanel {
         List<ImplingLocationHistory> luckyImpsToRender = getImps(LUCKY, stateToRender);
         if (!luckyImpsToRender.isEmpty()) {
             renderImps(LUCKY, luckyImpsToRender);
+        }
+        List<ImplingLocationHistory> ninjaImpsToRender = getImps(NINJA, stateToRender);
+        if (!ninjaImpsToRender.isEmpty()) {
+            renderImps(NINJA, ninjaImpsToRender);
+        }
+        List<ImplingLocationHistory> magpieImpsToRender = getImps(MAGPIE, stateToRender);
+        if (!magpieImpsToRender.isEmpty()) {
+            renderImps(MAGPIE, magpieImpsToRender);
         }
         return super.render(graphics);
     }

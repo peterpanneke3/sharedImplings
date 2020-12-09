@@ -24,8 +24,6 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.task.Schedule;
 import net.runelite.client.ui.overlay.OverlayManager;
 import okhttp3.OkHttpClient;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.time.temporal.ChronoUnit;
@@ -40,7 +38,7 @@ import java.util.stream.Collectors;
         description = "Crowdsource implings. Automaticaly report implings. Automaticaly receive impling locations from other users",
         tags = {"hunter", "minimap", "crowdsource", "lucky imp", "dragon imp", "implings"}
 
-        )
+)
 @Slf4j
 public class SharedImplingsPlugin extends Plugin {
 
@@ -93,7 +91,7 @@ public class SharedImplingsPlugin extends Plugin {
 
     @Subscribe
     public void onReportImplingDespawn(ReportImplingDespawn message) {
-        if(!message.isValid()){
+        if (!message.isValid()) {
             log.debug("received invalid message" + message.toString());
             return;
         }
@@ -104,19 +102,13 @@ public class SharedImplingsPlugin extends Plugin {
 
     @Subscribe
     public void onReportImplingSighting(ReportImplingSighting message) {
-        if(!message.isValid()){
+        if (!message.isValid()) {
             log.debug("received invalid message" + message.toString());
             return;
         }
-        if (!config.receiveDragon() && !config.receiveLucky()) {
-            return;
-        }
-
         ImplingSightingData impLocationMessage = message.getData();
 
-        boolean interestedInSighting = (impLocationMessage.getImplingType() == ImplingType.DRAGON && config.receiveDragon()) ||
-                (impLocationMessage.getImplingType() == ImplingType.LUCKY && config.receiveLucky());
-        interestedInSighting = interestedInSighting && (!config.receiveOnlyCurrentWorldImplings() || client.getWorld() == impLocationMessage.getWorld());
+        boolean interestedInSighting = configIsInterestedInSighting(impLocationMessage);
         if (interestedInSighting) {
 
             notifyIfNeeded(impLocationMessage);
@@ -129,15 +121,66 @@ public class SharedImplingsPlugin extends Plugin {
         }
     }
 
+    private boolean configIsInterestedInSighting(ImplingSightingData impLocationMessage) {
+        boolean isPuroPuro = impLocationMessage.getWorldLocation().getRegionID() == 10307;
+        ImplingType implingType = impLocationMessage.getImplingType();
+        boolean isCurrentWorld = client.getWorld() == impLocationMessage.getWorld();
+
+        switch (implingType) {
+            case DRAGON:
+                return testConfigFilter(isPuroPuro, isCurrentWorld, config.receiveDragon(), config.receiveDragonOnlyCurrentWorld());
+            case LUCKY:
+                return testConfigFilter(isPuroPuro, isCurrentWorld, config.receiveLucky(), config.receiveLuckyOnlyCurrentWorld());
+            case NINJA:
+                return testConfigFilter(isPuroPuro, isCurrentWorld, config.receiveNinja(), config.receiveNinjaOnlyCurrentWorld());
+            case MAGPIE:
+                return testConfigFilter(isPuroPuro, isCurrentWorld, config.receiveMagpie(), config.receiveMagpieOnlyCurrentWorld());
+            default:
+                return false;
+        }
+    }
+
+    private boolean configWantsToNotifySighting(ImplingSightingData impLocationMessage) {
+        boolean isPuroPuro = impLocationMessage.getWorldLocation().getRegionID() == 10307;
+        ImplingType implingType = impLocationMessage.getImplingType();
+        boolean isCurrentWorld = client.getWorld() == impLocationMessage.getWorld();
+
+        switch (implingType) {
+            case DRAGON:
+                return testConfigFilter(isPuroPuro, isCurrentWorld, config.receiveDragonNotificationFilter(), config.receiveDragonOnlyCurrentWorld());
+            case LUCKY:
+                return testConfigFilter(isPuroPuro, isCurrentWorld, config.receiveLuckyNotificationFilter(), config.receiveLuckyOnlyCurrentWorld());
+            case NINJA:
+                return testConfigFilter(isPuroPuro, isCurrentWorld, config.receiveNinjaNotificationFilter(), config.receiveNinjaOnlyCurrentWorld());
+            case MAGPIE:
+                return testConfigFilter(isPuroPuro, isCurrentWorld, config.receiveMagpieNotificationFilter(), config.receiveMagpieOnlyCurrentWorld());
+            default:
+                return false;
+        }
+    }
+
+    private boolean testConfigFilter(boolean isPuroPuro, boolean isCurrentWorld, LocationOption locationFilter, boolean onlyCurrentWorld) {
+        boolean worldOk = isCurrentWorld || !onlyCurrentWorld;
+        boolean locationOk = testLocationFilter(isPuroPuro, locationFilter);
+        return worldOk && locationOk;
+    }
+
+    private boolean testLocationFilter(boolean isPuroPuro, LocationOption locationFilter) {
+        switch (locationFilter) {
+            case EXCLUDE_PURO_PURO:
+                return !isPuroPuro;
+            case EVERYWHERE:
+                return true;
+            default:
+                return false;
+        }
+    }
+
     private void notifyIfNeeded(ImplingSightingData impLocationMessage) {
-        if (config.notification() == NotificationConfig.NONE) {
+        boolean configAccepts = configWantsToNotifySighting(impLocationMessage);
+        if (!configAccepts) {
             return;
         }
-
-        if (client.getWorld() != impLocationMessage.getWorld() && config.notification() == NotificationConfig.ONLY_CURRENT_WORLD) {
-            return;
-        }
-
 
         if (receivedImpSightings.isNewSighting(impLocationMessage.getWorld(), impLocationMessage.getImplingType(), impLocationMessage.getNpcIndex())) {
             notifier.notify(impLocationMessage.getImplingType() + " impling reported in "
@@ -161,8 +204,8 @@ public class SharedImplingsPlugin extends Plugin {
 
         implingTypeOpt.ifPresent(
                 impType -> {
-                    if (shouldReport(impType, config)) {
-                        Impling impling = new Impling(impType, npc);
+                    Impling impling = new Impling(impType, npc);
+                    if (shouldReport(impling)) {
                         reportLocationOf(impling);
                         reportNewLocationsOf.add(impling);
                     } else {
@@ -174,11 +217,24 @@ public class SharedImplingsPlugin extends Plugin {
         );
     }
 
-    private boolean shouldReport(ImplingType impType, SharedImplingsConfig config) {
-        return (impType == ImplingType.DRAGON && config.reportDragon())
-                || (impType == ImplingType.LUCKY && config.reportLucky());
+    private boolean shouldReport(Impling impling) {
+        boolean isPuroPuro = impling.getNpc().getWorldLocation().getRegionID() == 10307;
+        ImplingType implingType = impling.getImplingType();
 
+        switch (implingType) {
+            case DRAGON:
+                return testLocationFilter(isPuroPuro, config.reportDragon());
+            case LUCKY:
+                return testLocationFilter(isPuroPuro, config.reportLucky());
+            case NINJA:
+                return testLocationFilter(isPuroPuro, config.reportNinja());
+            case MAGPIE:
+                return testLocationFilter(isPuroPuro, config.reportMagpie());
+            default:
+                return false;
+        }
     }
+
 
     //TODO refactor into ImpTracker
     Set<Impling> reportNewLocationsOf = new HashSet<>();
@@ -192,8 +248,8 @@ public class SharedImplingsPlugin extends Plugin {
                     //if the imp moves out of sight, it should not be reported as gone,
                     //because it might still be there
                     //happens when player teleports, or the player/imp walk away
-                    if(despawnHappenedNearPlayer(npcDespawned)){
-                        reportDespawnOf(new Impling( implingType, npcDespawned.getNpc()));
+                    if (despawnHappenedNearPlayer(npcDespawned)) {
+                        reportDespawnOf(new Impling(implingType, npcDespawned.getNpc()));
                     }
                 }
 
@@ -209,7 +265,7 @@ public class SharedImplingsPlugin extends Plugin {
             WorldPoint despawnLocation = npcDespawned.getNpc().getWorldLocation();
             WorldPoint playerLocation = client.getLocalPlayer().getWorldLocation();
             return despawnLocation.distanceTo(playerLocation) < 15;
-        }catch (Exception e){
+        } catch (Exception e) {
             return false;
         }
     }
@@ -251,27 +307,41 @@ public class SharedImplingsPlugin extends Plugin {
         socketClient.send(impDespawn);
     }
 
-    public static boolean devMode = false;
 
     @Schedule(period = 10, unit = ChronoUnit.SECONDS, asynchronous = true)
-    public void autoReconnect(){
-        if(stateHolder.getState() == ConnectionState.DISCONNECTED){
+    public void autoReconnect() {
+        if (stateHolder.getState() == ConnectionState.DISCONNECTED) {
             socketClient.connect();
         }
     }
 
+    public static boolean devMode = false;
+    public static int devIndex = 0;
 
-
-    @Schedule(period = 10, unit = ChronoUnit.SECONDS)
+    @Schedule(period = 20, unit = ChronoUnit.SECONDS)
     public void fakeReceiveImplingLocation() {
         if (devMode && client.getGameState() == GameState.LOGGED_IN) {
+            devIndex = (devIndex + 1) % 4;
             ReportImplingSighting fakeSighting = new ReportImplingSighting(ImplingSightingData.builder()
-                    .npcIndex(10)
-                    .implingType(ImplingType.DRAGON)
+                    .npcIndex(devIndex)
+                    .implingType(indexToImp(devIndex))
                     .worldLocation(client.getLocalPlayer().getWorldLocation())
                     .world(client.getWorld())
                     .build());
             onReportImplingSighting(fakeSighting);
+        }
+    }
+
+    private ImplingType indexToImp(int rng) {
+        switch (rng) {
+            case 0:
+                return ImplingType.LUCKY;
+            case 1:
+                return ImplingType.DRAGON;
+            case 2:
+                return ImplingType.NINJA;
+            default:
+                return ImplingType.MAGPIE;
         }
     }
 
