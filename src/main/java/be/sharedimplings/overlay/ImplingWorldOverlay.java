@@ -5,6 +5,7 @@ import be.sharedimplings.SharedImplingsConfig;
 import be.sharedimplings.servercommunication.ConnectionState;
 import be.sharedimplings.servercommunication.ConnectionStateHolder;
 import net.runelite.api.Client;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.OverlayPriority;
@@ -81,12 +82,40 @@ public class ImplingWorldOverlay extends OverlayPanel {
                     boolean inCurrentWorld = impLocationHistory.getWorld() == client.getWorld();
                     String worldText = inCurrentWorld ? "" : " (W" + impLocationHistory.getWorld() + ")";
                     String caughtText = impLocationHistory.isReportedAsDespawned() ?  "(CAUGHT)" : "";
+                    String directionText = buildDirectionText(impLocationHistory.getMostRecentLocation(), inCurrentWorld);
                     panelComponent.getChildren().add(TitleComponent.builder()
-                            .text(impLocationHistory.locationDescription() + worldText + " " + impLocationHistory.ageInSeconds() + "s ago " + caughtText)
+                            .text(impLocationHistory.locationDescription() + worldText + " " + impLocationHistory.ageInSeconds() + "s ago " + caughtText + directionText)
                             .color(inCurrentWorld ? (impLocationHistory.isReportedAsDespawned() ? Color.ORANGE : Color.GREEN) : Color.RED)
                             .build());
                 });
 
+    }
+
+    private String buildDirectionText(LocationAge mostRecentLocation, boolean inCurrentWorld) {
+        WorldPoint impPoint = mostRecentLocation.getWorldPoint();
+        WorldPoint playerLocation = client.getLocalPlayer().getWorldLocation();
+        boolean nearEnough = playerLocation.distanceTo(impPoint) < 60;
+        if(!nearEnough || !inCurrentWorld){
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        int yDiff = impPoint.getY() - playerLocation.getY();
+        if(yDiff > 0){
+            sb.append(yDiff).append("N");
+        }
+        if(yDiff < 0){
+            sb.append(-yDiff).append("S");
+        }
+
+
+        int xDiff = impPoint.getX() - playerLocation.getX();
+        if(xDiff > 0){
+            sb.append(xDiff).append("E");
+        }
+        if(xDiff < 0) {
+            sb.append(-xDiff).append("W");
+        }
+        return sb.toString();
     }
 
     private List<ImplingLocationHistory> getImps(ImplingType implingType, GroupedImplingState stateToRender) {
