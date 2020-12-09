@@ -253,7 +253,7 @@ public class SharedImplingsPlugin extends Plugin {
 
     public static boolean devMode = false;
 
-    @Schedule(period = 10, unit = ChronoUnit.SECONDS)
+    @Schedule(period = 10, unit = ChronoUnit.SECONDS, asynchronous = true)
     public void autoReconnect(){
         if(stateHolder.getState() == ConnectionState.DISCONNECTED){
             socketClient.connect();
